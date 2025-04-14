@@ -8,7 +8,8 @@ interface PageProps {
     link?: string | string[];
   };
 }
-// cette fonction reconstruit l'URL
+
+// Cette fonction reconstruit l'URL
 function reconstructUrl({ url }: { url: string[] }) {
   const decodedComponents = url.map((component) =>
     decodeURIComponent(component)
@@ -17,22 +18,22 @@ function reconstructUrl({ url }: { url: string[] }) {
 }
 
 const page = async ({ params }: PageProps) => {
-  const sessioCookies = (await cookies()).get("sessionId")?.value;
+  const sessionCookies = (await cookies()).get("sessionId")?.value;
 
-  const awaitedParams = await params;
-  if (!awaitedParams?.link) {
+  // Pas besoin de 'await' ici, params est déjà un objet synchrone.
+  if (!params?.link) {
     return <div>Erreur: Aucun lien fourni</div>;
   }
-  const linkArray = Array.isArray(awaitedParams.link)
-    ? awaitedParams.link
-    : [awaitedParams.link];
+
+  const linkArray = Array.isArray(params.link) ? params.link : [params.link];
 
   const decodedLink = reconstructUrl({ url: linkArray });
 
-  const sessionId = (decodedLink + "__" + sessioCookies).replace(/\//g, "");
+  const sessionId = (decodedLink + "__" + sessionCookies).replace(/\//g, "");
   const isAlreadyIndexed = await redis.sismember("indexed-urls", decodedLink);
+
   if (!isAlreadyIndexed) {
-    console.log("Indexation en cour...");
+    console.log("Indexation en cours...");
     await ragChat.context.add({
       type: "html",
       source: decodedLink,
@@ -41,12 +42,18 @@ const page = async ({ params }: PageProps) => {
     await redis.sadd("indexed-urls", decodedLink);
   }
 
-  const initialMessages = await ragChat.history.getMessages({amount:10, sessionId})
-  return <Chat 
-  decodedLink={decodedLink}
-  sessionId={sessionId}
-  initialMessages={initialMessages}
-  ></Chat>;
+  const initialMessages = await ragChat.history.getMessages({
+    amount: 10,
+    sessionId,
+  });
+
+  return (
+    <Chat
+      decodedLink={decodedLink}
+      sessionId={sessionId}
+      initialMessages={initialMessages}
+    />
+  );
 };
 
 export default page;
