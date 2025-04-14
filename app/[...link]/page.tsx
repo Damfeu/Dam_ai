@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import Chat from "../components/Chat";
-import { Redis } from "@upstash/redis";
 import { redis } from "@/lib/redis";
 import { ragChat } from "@/lib/rag-chat";
 
