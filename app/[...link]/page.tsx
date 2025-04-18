@@ -3,10 +3,11 @@ import Chat from "../components/Chat";
 import { redis } from "@/lib/redis";
 import { ragChat } from "@/lib/rag-chat";
 
+// Mise à jour de l'interface pour refléter que params est une Promise
 interface PageProps {
-  params: {
+  params: Promise<{
     link: string[];
-  };
+  }>;
 }
 
 function reconstructUrl({ url }: { url: string[] }) {
@@ -17,12 +18,13 @@ function reconstructUrl({ url }: { url: string[] }) {
 }
 
 export default async function Page({ params }: PageProps) {
-  // Attendre à la fois cookies et params.link
-  const cookiesInstance = await cookies();
-  const sessionCookies = cookiesInstance.get("sessionId")?.value;
+  // Attendre à la fois cookies et params
+  const [cookiesInstance, paramsObj] = await Promise.all([
+    cookies(),
+    params
+  ]);
   
-  // Attendre params avant d'utiliser ses propriétés
-  const paramsObj = await params;
+  const sessionCookies = cookiesInstance.get("sessionId")?.value;
   const linkArray = paramsObj.link;
   
   const decodedLink = reconstructUrl({ url: linkArray });
