@@ -5,11 +5,10 @@ import { ragChat } from "@/lib/rag-chat";
 
 interface PageProps {
   params: {
-    link?: string | string[];
+    link: string[];
   };
 }
 
-// Cette fonction reconstruit l'URL
 function reconstructUrl({ url }: { url: string[] }) {
   const decodedComponents = url.map((component) =>
     decodeURIComponent(component)
@@ -17,21 +16,20 @@ function reconstructUrl({ url }: { url: string[] }) {
   return decodedComponents.join("/");
 }
 
-const page = async ({ params }: PageProps) => {
-  const sessionCookies = (await cookies()).get("sessionId")?.value;
-
-  // Pas besoin de 'await' ici, params est déjà un objet synchrone.
-  if (!params?.link) {
-    return <div>Erreur: Aucun lien fourni</div>;
-  }
-
-  const linkArray = Array.isArray(params.link) ? params.link : [params.link];
-
+export default async function Page({ params }: PageProps) {
+  // Attendre à la fois cookies et params.link
+  const cookiesInstance = await cookies();
+  const sessionCookies = cookiesInstance.get("sessionId")?.value;
+  
+  // Attendre params avant d'utiliser ses propriétés
+  const paramsObj = await params;
+  const linkArray = paramsObj.link;
+  
   const decodedLink = reconstructUrl({ url: linkArray });
-
+  
   const sessionId = (decodedLink + "__" + sessionCookies).replace(/\//g, "");
+  
   const isAlreadyIndexed = await redis.sismember("indexed-urls", decodedLink);
-
   if (!isAlreadyIndexed) {
     console.log("Indexation en cours...");
     await ragChat.context.add({
@@ -41,12 +39,12 @@ const page = async ({ params }: PageProps) => {
     });
     await redis.sadd("indexed-urls", decodedLink);
   }
-
+  
   const initialMessages = await ragChat.history.getMessages({
     amount: 10,
     sessionId,
   });
-
+  
   return (
     <Chat
       decodedLink={decodedLink}
@@ -54,6 +52,4 @@ const page = async ({ params }: PageProps) => {
       initialMessages={initialMessages}
     />
   );
-};
-
-export default page;
+}
